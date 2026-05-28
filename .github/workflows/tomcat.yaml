@@ -104,7 +104,7 @@ deploy-prod:
       with:
         name: war-file
 
-    - name: 🚀 Deploy to PROD
+    - name: 🚀 Deploy to POD
       env:
         URL: ${{ secrets.TOMCAT_URL_PROD }}
         USER: ${{ secrets.TOMCAT_USER_PROD }}
