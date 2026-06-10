@@ -10,41 +10,46 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Build WAR File
         run: mvn clean package -DskipTests
-      - name:  SonarQube Scan
-        run:  
-          mvn sonar:sonar/
+
+      - name: SonarQube Scan
+        run: |
+          mvn sonar:sonar \
             -Dsonar.projectKey=train-ticket-reservation \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+
       - name: Upload WAR to Nexus
         env:
-        NEXUS_URL: ${{ secrets.NEXUS_URL }}
-        NEXUS_USER: ${{ secrets.NEXUS_USERNAME }}
-        NEXUS_PASS: ${{ secrets.NEXUS_PASSWORD }}
-       run: 
-        
-         WAR_FILE=$(ls target/*.war | head -n 1)
-         curl -v -u "$NEXUS_USER:$NEXUS_PASS" \
-           --upload-file "$WAR_FILE" \
-           "$NEXUS_URL/repository/maven-releases/train-ticket-reservation.war"
+          NEXUS_URL: ${{ secrets.NEXUS_URL }}
+          NEXUS_USER: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASS: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          WAR_FILE=$(ls target/*.war | head -n 1)
+
+          curl -v -u "$NEXUS_USER:$NEXUS_PASS" \
+            --upload-file "$WAR_FILE" \
+            "$NEXUS_URL/repository/maven-releases/train-ticket-reservation.war"
+
       - name: Find WAR File
         run: |
           WAR_FILE=$(ls target/*.war | head -n 1)
           echo "WAR_FILE=$WAR_FILE" >> $GITHUB_ENV
+
       - name: Upload WAR Artifact
         uses: actions/upload-artifact@v4
         with:
           name: war-file
-          path: ${{ env.WAR_FILE }}
-
-  
+          path: $ {{ env.WAR_FILE }}
