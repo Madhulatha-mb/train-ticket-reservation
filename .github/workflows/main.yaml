@@ -25,13 +25,13 @@ jobs:
       - name: Build WAR File
         run: mvn clean package -DskipTests
 
-       - name: Upload WAR to Nexus
+      - name: Upload WAR to Nexus
        env:
         NEXUS_URL: ${{ secrets.NEXUS_URL }}
         NEXUS_USER: ${{ secrets.NEXUS_USERNAME }}
         NEXUS_PASS: ${{ secrets.NEXUS_PASSWORD }}
 
-      run:
+       run: 
          WAR_FILE=$(ls target/*.war | head -n 1)
 
          curl -v -u "$NEXUS_USER:$NEXUS_PASS" \
