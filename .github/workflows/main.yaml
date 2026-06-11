@@ -1,58 +1,89 @@
-name: Build and Deploy train-ticket-reservation
+
+     name: TrainBook CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - master
-
-  workflow_dispatch:
+    branches: ["master", "main"]
 
 jobs:
-  build:
+
+# ---------------- BUILD + SONAR + NEXUS ----------------
+  build-sonar-nexus:
+
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # ✅ Java 17 FIX (required for SonarQube)
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: 17
 
-      - name: Build WAR File
+      # ---------------- Maven Build ----------------
+      - name: Build Project
         run: mvn clean package -DskipTests
 
+      # ---------------- SonarQube Scan ----------------
       - name: SonarQube Scan
         run: |
           mvn sonar:sonar \
-            -Dsonar.projectKey=train-ticket-reservation \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.projectKey=train-ticket-reservation \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
-      - name: Upload WAR to Nexus
-        env:
-          NEXUS_URL: ${{ secrets.NEXUS_URL }}
-          NEXUS_USER: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASS: ${{ secrets.NEXUS_PASSWORD }}
+      # ---------------- Configure Maven for Nexus ----------------
+      - name: Configure Maven settings.xml for Nexus
         run: |
-          WAR_FILE=$(ls target/*.war | head -n 1)
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings>
+            <servers>
+              <server>
+                <id>nexus</id>
+                <username>${{ secrets.NEXUS_USERNAME }}</username>
+                <password>${{ secrets.NEXUS_PASSWORD }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
 
-          curl -v -u "$NEXUS_USER:$NEXUS_PASS" \
-            --upload-file "$WAR_FILE" \
-            "$NEXUS_URL/repository/maven-releases/train-ticket-reservation.war"
+      # ---------------- Deploy to Nexus ----------------
+      - name: Deploy Artifact to Nexus
+        run: mvn deploy -DskipTests
 
-      - name: Deploy to Tomcat
-        env:
-          TOMCAT_HOST: ${{ secrets.TOMCAT_HOST }}
-          TOMCAT_PORT: ${{ secrets.TOMCAT_PORT }}
-          TOMCAT_USER: ${{ secrets.TOMCAT_USERNAME }}
-          TOMCAT_PASS: ${{ secrets.TOMCAT_PASSWORD }}
+      # ---------------- Upload WAR Artifact ----------------
+      - name: Upload WAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: war-file
+          path: target/*.war
+
+
+# ---------------- DEPLOY TO TOMCAT ----------------
+  deploy-tomcat:
+
+    needs: build-sonar-nexus
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ---------------- Download WAR ----------------
+      - name: Download WAR
+        uses: actions/download-artifact@v4
+        with:
+          name: war-file
+
+      # ---------------- Deploy to Tomcat ----------------
+      - name: Deploy to Tomcat Server
         run: |
-          WAR_FILE=$(ls target/*.war | head -n 1)
+          WAR_FILE=$(find . -name "*.war" | head -1)
 
-          curl -v -u "$TOMCAT_USER:$TOMCAT_PASS" \
-          -T "$WAR_FILE" \
-          "http://$TOMCAT_HOST:$TOMCAT_PORT/manager/text/deploy?path=/train-ticket-reservation&update=true"
-         
+          curl -v --fail --show-error \
+          --user "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
+          --upload-file "$WAR_FILE" \
+          "http://${{ secrets.TOMCAT_HOST }}:8080/manager/text/deploy?path=/TrainBook&update=true"
