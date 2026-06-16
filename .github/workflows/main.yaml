@@ -1,4 +1,4 @@
-name: Build and Deploy train-ticket-reservation
+name: Build and Upload WAR to Nexus
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -24,16 +24,26 @@ jobs:
       - name: Build WAR File
         run: mvn clean package -DskipTests
 
+      - name: Verify WAR File
+        run: |
+          ls -la target/
+          WAR_FILE=$(find target -name "*.war" | head -n 1)
+          echo "WAR File Found: $WAR_FILE"
+
       - name: Upload WAR to Nexus
         env:
           NEXUS_URL: ${{ secrets.NEXUS_REPO_URL }}
           NEXUS_USER: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASS: ${{ secrets.NEXUS_PASSWORD }}
         run: |
-          WAR_FILE=$(ls target/*.war | head -n 1)
+          WAR_FILE=$(find target -name "*.war" | head -n 1)
 
           curl -v -u "$NEXUS_USER:$NEXUS_PASS" \
             --upload-file "$WAR_FILE" \
-            "$NEXUS_URL/repository/maven-releases/train-ticket-reservation.war"
+            "$NEXUS_URL/repository/maven-releases/$(basename $WAR_FILE)"
 
-    
+      - name: Upload WAR Artifact to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-ticket-reservation-war
+          path: target/*.war
