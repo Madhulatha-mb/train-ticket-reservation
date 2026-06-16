@@ -1,4 +1,4 @@
-name: Build and Upload WAR to Nexus
+name: Build and Upload WAR to Nexus Snapshot
 
 on:
   push:
@@ -39,7 +39,7 @@ jobs:
           </settings>
           EOF
 
-      - name: Upload Artifact to Nexus
+      - name: Deploy Artifact to Nexus Snapshot Repository
         run: mvn deploy -DskipTests -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_REPO_URL }}
 
       - name: Upload WAR Artifact to GitHub
