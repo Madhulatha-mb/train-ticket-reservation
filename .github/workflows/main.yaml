@@ -44,23 +44,24 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker Image
-      run: |
-       docker build -t train-app .
+  run: |
+    docker build -t train-app:latest .
 
-       - name: Tag and Push Image to ECR
-      run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+    - name: Tag Docker Image
+   run: |
+    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-           docker tag train-app:latest \
-           $ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/project-image-repo:latest
+    echo "ACCOUNT_ID=$ACCOUNT_ID"
 
-        docker push \
-            $ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/project-image-repo:latest
+    docker tag train-app:latest \
+    $ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/project-image-repo:latest
 
-      - name: Push to ECR
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          docker push $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+    - name: Push Image to ECR
+  run: |
+    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+    docker push \
+    $ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/project-image-repo:latest
       - name: Update ECS Task Definition
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
