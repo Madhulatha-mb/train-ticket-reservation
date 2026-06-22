@@ -47,14 +47,17 @@ jobs:
   run: |
     docker build -t train-app:latest .
 
-    - name: Tag Docker Image
+     - name: Push Image to ECR
    run: |
     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-    echo "ACCOUNT_ID=$ACCOUNT_ID"
+    ECR_URI=$ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/project-image-repo
 
-    docker tag train-app:latest \
-    $ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/project-image-repo:latest
+    echo $ECR_URI
+
+    docker tag train-app:latest $ECR_URI:latest
+
+    docker push $ECR_URI:latest
 
     - name: Push Image to ECR
   run: |
